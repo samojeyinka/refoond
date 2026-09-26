@@ -1,0 +1,904 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Refoond API",
+    "version": "1.0.0",
+    "description": "Refund support API. The policy engine is deterministic and runs on the server: the model in the browser drafts an explanation but can never approve, deny or escalate a refund.\n\n**Authentication** is a httpOnly session cookie named `wn_token`, set by `POST /auth/login` or `POST /auth/signup`. Swagger UI cannot set cookies for you: log in with the *Try it out* button on `POST /auth/login` first, then the browser holds the cookie and every later request is authenticated.\n\n**Envelope** — every response is `{ \"success\": true, \"data\": ... }` or, on failure, `{ \"success\": false, \"message\": string, \"code\": string, \"details\"?: unknown }`."
+  },
+  "servers": [
+    { "url": "http://localhost:5050/api/v1", "description": "Local development" },
+    { "url": "http://localhost:5050", "description": "Local, without the /api/v1 prefix (health check only)" }
+  ],
+  "tags": [
+    { "name": "Health", "description": "Liveness and dependency check." },
+    { "name": "Auth", "description": "Signup, login, logout and the current session." },
+    { "name": "Refunds", "description": "Customer-facing orders, refund requests and the message thread." },
+    { "name": "Admin", "description": "Staff-only review queue. Requires the ADMIN role." }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "wn_token",
+        "description": "httpOnly session cookie issued by POST /auth/login."
+      }
+    },
+    "parameters": {
+      "RequestId": {
+        "name": "requestId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Refund request id."
+      },
+      "DecisionFilter": {
+        "name": "decision",
+        "in": "query",
+        "required": false,
+        "schema": { "$ref": "#/components/schemas/RefundDecision" },
+        "description": "Filter by decision."
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
+        "description": "Page size, capped at 200 server-side."
+      }
+    },
+    "schemas": {
+      "RefundReason": {
+        "type": "string",
+        "enum": ["DAMAGED", "WRONG_ITEM", "NOT_AS_DESCRIBED", "NOT_DELIVERED", "LATE_DELIVERY", "CHANGED_MIND", "OTHER"]
+      },
+      "RefundDecision": {
+        "type": "string",
+        "enum": ["APPROVED", "DENIED", "ESCALATED"]
+      },
+      "RefundMessageAuthor": {
+        "type": "string",
+        "enum": ["CUSTOMER", "AI", "ADMIN", "SYSTEM"]
+      },
+      "RefundFlag": {
+        "type": "string",
+        "enum": [
+          "HIGH_VALUE",
+          "INJECTION_ATTEMPT",
+          "CONFLICTING_CLAIM",
+          "DUPLICATE_REQUEST",
+          "NEW_ACCOUNT",
+          "REPEAT_REFUNDER",
+          "FINAL_SALE_EXCLUDED",
+          "AMOUNT_REDUCED",
+          "AMOUNT_ABOVE_ORDER"
+        ]
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": ["PAID", "SHIPPED", "DELIVERED", "RETURNED", "CANCELLED"]
+      },
+      "Error": {
+        "type": "object",
+        "required": ["success", "message", "code"],
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "Invalid request" },
+          "code": { "type": "string", "example": "VALIDATION_ERROR" },
+          "details": { "nullable": true, "description": "Zod issue list for 422s, or an internal message outside production." }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "fullName", "email", "role"],
+        "properties": {
+          "id": { "type": "string" },
+          "fullName": { "type": "string", "example": "Ada Lovelace" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["CUSTOMER", "ADMIN"] }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": ["name", "category", "unitAmountCents", "quantity", "finalSale"],
+        "properties": {
+          "name": { "type": "string", "example": "Ceramic Mug" },
+          "category": { "type": "string" },
+          "unitAmountCents": { "type": "integer" },
+          "quantity": { "type": "integer" },
+          "finalSale": {
+            "type": "boolean",
+            "description": "Final-sale items are excluded from the refundable maximum."
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": ["id", "orderNumber", "status", "currency", "subtotalCents", "totalCents", "items"],
+        "properties": {
+          "id": { "type": "string" },
+          "orderNumber": { "type": "string", "example": "ORD-1001" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "placedAt": { "type": "string", "format": "date-time" },
+          "deliveredAt": { "type": "string", "format": "date-time", "nullable": true },
+          "currency": { "type": "string", "example": "USD" },
+          "subtotalCents": { "type": "integer", "description": "Shipping is never refundable." },
+          "shippingCents": { "type": "integer" },
+          "totalCents": { "type": "integer" },
+          "total": { "type": "string", "example": "$64.00", "description": "Pre-formatted for display." },
+          "refundedCents": { "type": "integer" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": ["author", "body", "createdAt"],
+        "properties": {
+          "author": { "$ref": "#/components/schemas/RefundMessageAuthor" },
+          "authorName": {
+            "type": "string",
+            "description": "Real sender name. Empty on messages stored before the field existed."
+          },
+          "body": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RuleTraceEntry": {
+        "type": "object",
+        "properties": {
+          "ruleId": { "type": "string" },
+          "policyRef": { "type": "string" },
+          "outcome": { "type": "string", "enum": ["PASS", "FAIL", "ADJUST", "INFO"] },
+          "message": { "type": "string" }
+        }
+      },
+      "AiClassification": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "intent": { "type": "string", "enum": ["REFUND_REQUEST", "STATUS_CHECK", "OTHER"] },
+          "detectedReason": { "type": "string" },
+          "claimedItemNames": { "type": "array", "items": { "type": "string" } },
+          "isDispute": { "type": "boolean" },
+          "urgency": { "type": "string", "enum": ["LOW", "NORMAL", "HIGH"] },
+          "requestedHuman": {
+            "type": "boolean",
+            "description": "Persisted handoff. Once true the assistant stays silent and the case is human-handled."
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "summary": { "type": "string" }
+        }
+      },
+      "AiMeta": {
+        "type": "object",
+        "description": "Audit record for the browser-side assistant turn.",
+        "properties": {
+          "provider": { "type": "string", "example": "gemini" },
+          "model": { "type": "string", "example": "gemini-2.5-flash-lite" },
+          "latencyMs": { "type": "integer" },
+          "promptVersion": { "type": "string" },
+          "usedFallback": {
+            "type": "boolean",
+            "description": "True when no usable model reply was produced and a safe canned line was stored instead."
+          },
+          "injectionFlags": { "type": "array", "items": { "type": "string" } },
+          "classification": { "$ref": "#/components/schemas/AiClassification" }
+        }
+      },
+      "RefundRequest": {
+        "type": "object",
+        "required": ["id", "reference", "orderId", "orderNumber", "reason", "decision", "status", "flags", "messages", "unreadCount"],
+        "properties": {
+          "id": { "type": "string" },
+          "reference": { "type": "string", "example": "RF-2026-0001" },
+          "orderId": { "type": "string" },
+          "orderNumber": { "type": "string" },
+          "order": {
+            "type": "object",
+            "nullable": true,
+            "description": "Only populated by the single-request endpoints.",
+            "properties": {
+              "orderNumber": { "type": "string" },
+              "status": { "$ref": "#/components/schemas/OrderStatus" },
+              "currency": { "type": "string" },
+              "totalCents": { "type": "integer" },
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } }
+            }
+          },
+          "reason": { "$ref": "#/components/schemas/RefundReason" },
+          "requestedCents": { "type": "integer" },
+          "approvedCents": { "type": "integer" },
+          "requestedAmount": { "type": "string", "example": "$40.00" },
+          "approvedAmount": { "type": "string", "example": "$40.00" },
+          "currency": { "type": "string" },
+          "decision": { "$ref": "#/components/schemas/RefundDecision" },
+          "status": {
+            "type": "string",
+            "description": "Derived lifecycle status: NEW, PENDING, RESOLVED or similar."
+          },
+          "decisionReason": { "type": "string", "description": "Human-readable explanation of the policy outcome." },
+          "flags": { "type": "array", "items": { "$ref": "#/components/schemas/RefundFlag" } },
+          "customerEmail": { "type": "string", "description": "Staff convenience field; the customer can read their own from /auth/me." },
+          "policyVersion": { "type": "string", "example": "2026-02-01" },
+          "ruleTrace": { "type": "array", "items": { "$ref": "#/components/schemas/RuleTraceEntry" } },
+          "aiReply": { "type": "string" },
+          "aiMeta": { "$ref": "#/components/schemas/AiMeta" },
+          "finalOutcome": { "type": "string", "nullable": true },
+          "adminNote": { "type": "string", "nullable": true },
+          "reviewedBy": { "type": "string", "nullable": true },
+          "reviewedByName": { "type": "string", "nullable": true },
+          "reviewedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "messages": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } },
+          "lastMessage": {
+            "type": "object",
+            "nullable": true,
+            "description": "Newest conversation message, used for list previews. SYSTEM decision lines are skipped.",
+            "allOf": [{ "$ref": "#/components/schemas/Message" }]
+          },
+          "unreadCount": {
+            "type": "integer",
+            "description": "Messages from the other side this viewer has not opened. Your own messages and SYSTEM lines never count. Per user, not global."
+          }
+        }
+      },
+      "RefundRequestList": {
+        "type": "object",
+        "required": ["summary", "requests"],
+        "properties": {
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "approved": { "type": "integer" },
+              "denied": { "type": "integer" },
+              "escalated": { "type": "integer" }
+            }
+          },
+          "requests": { "type": "array", "items": { "$ref": "#/components/schemas/RefundRequest" } }
+        }
+      },
+      "PolicySummary": {
+        "type": "object",
+        "description": "The deterministic rules, for display in the UI. Read-only.",
+        "additionalProperties": true
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "No session, or the session expired.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "Authentication required", "code": "UNAUTHENTICATED" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authenticated, but the role or ownership check failed.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "You cannot post in this thread.", "code": "FORBIDDEN" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found. Returned instead of 403 where confirming existence would leak it.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "Refund request not found", "code": "NOT_FOUND" }
+          }
+        }
+      },
+      "ValidationFailed": {
+        "description": "The payload failed schema validation.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "success": false,
+              "message": "Invalid request",
+              "code": "VALIDATION_ERROR",
+              "details": [{ "path": ["reason"], "message": "Required" }]
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "Too many requests, please slow down.", "code": "RATE_LIMITED" }
+          }
+        }
+      }
+    }
+  },
+  "security": [{ "cookieAuth": [] }],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness and database check",
+        "description": "Unauthenticated. Also mounted at the server root as `GET /health`.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string", "example": "ok" },
+                        "db": { "type": "string", "enum": ["connected", "disconnected"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Create a customer account",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fullName", "email", "password"],
+                "properties": {
+                  "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8, "maxLength": 128 }
+                }
+              },
+              "example": { "fullName": "Ada Lovelace", "email": "ada@example.com", "password": "Password123!" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created and a session cookie issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": { "user": { "$ref": "#/components/schemas/User" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "That email is already registered.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Log in and receive a session cookie",
+        "description": "Use this first in Swagger UI: the response sets the `wn_token` cookie, which authenticates every later request in the browser.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 1, "maxLength": 128 }
+                }
+              },
+              "example": { "email": "admin@refoond.dev", "password": "Password123!" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in. Sets the `wn_token` httpOnly cookie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": { "user": { "$ref": "#/components/schemas/User" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password. Deliberately does not say which.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Deactivate the current session",
+        "description": "Succeeds even with a missing or invalid cookie, so it is safe to call twice.",
+        "responses": {
+          "200": {
+            "description": "Session deactivated and the cookie cleared.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": { "loggedOut": { "type": "boolean" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Current session user",
+        "responses": {
+          "200": {
+            "description": "The signed-in user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": { "user": { "$ref": "#/components/schemas/User" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/refunds/policy": {
+      "get": {
+        "tags": ["Refunds"],
+        "summary": "The deterministic policy rules",
+        "description": "Unauthenticated. Return window, approval ceiling, review triggers — read-only, because the decision is made server-side and the model cannot influence it.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current policy values and version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/PolicySummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refunds/orders": {
+      "get": {
+        "tags": ["Refunds"],
+        "summary": "Orders belonging to the signed-in customer",
+        "responses": {
+          "200": {
+            "description": "Newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "orders": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/refunds/requests": {
+      "get": {
+        "tags": ["Refunds"],
+        "summary": "The signed-in customer's refund requests",
+        "parameters": [
+          { "$ref": "#/components/parameters/DecisionFilter" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first, with a decision summary and per-user unread counts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequestList" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Refunds"],
+        "summary": "Open a refund request",
+        "description": "The policy engine runs here and decides immediately. Amounts are in major units (40 means $40.00) and are stored in cents. This endpoint never contains an AI-authored message: the assistant writes its reply in the browser and posts it to `/requests/{requestId}/ai-messages`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["orderNumber", "reason", "requestedAmount", "message"],
+                "properties": {
+                  "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+                  "reason": { "$ref": "#/components/schemas/RefundReason" },
+                  "requestedAmount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 100000,
+                    "description": "Major units, not cents."
+                  },
+                  "claimedItemNames": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+                  },
+                  "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                }
+              },
+              "example": {
+                "orderNumber": "ORD-1001",
+                "reason": "DAMAGED",
+                "requestedAmount": 40,
+                "claimedItemNames": ["Ceramic Mug"],
+                "message": "The mug arrived cracked on arrival."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created. `decision` is APPROVED, DENIED or ESCALATED, decided by the policy engine.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/refunds/requests/{requestId}": {
+      "get": {
+        "tags": ["Refunds"],
+        "summary": "One refund request with its full thread",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "responses": {
+          "200": {
+            "description": "The request, including the order and every message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/refunds/requests/{requestId}/seen": {
+      "post": {
+        "tags": ["Refunds"],
+        "summary": "Mark the thread read for the current user",
+        "description": "Opening a thread is what marks it read. The marker is stored per user, so one reader clearing it never hides the thread from another. Idempotent.",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "responses": {
+          "200": {
+            "description": "Read marker written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "object", "properties": { "seen": { "type": "boolean" } } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "$ref": "#/components/responses/NotFound",
+            "description": "Not found, or not yours. 404 rather than 403 so the endpoint does not confirm the request exists."
+          }
+        }
+      }
+    },
+    "/refunds/requests/{requestId}/messages": {
+      "post": {
+        "tags": ["Refunds"],
+        "summary": "Post a human message into the thread",
+        "description": "Also the fallback path when the socket is unavailable. A live socket broadcast additionally delivers the message to the other side.",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": { "body": { "type": "string", "minLength": 1, "maxLength": 2000 } }
+              },
+              "example": { "body": "I have issued the replacement." }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message stored. Returns the updated request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" }
+        }
+      }
+    },
+    "/refunds/requests/{requestId}/ai-messages": {
+      "post": {
+        "tags": ["Refunds"],
+        "summary": "Persist an assistant reply generated in the browser",
+        "description": "The assistant runs in the browser, so its reply is written back through this endpoint together with the `meta` needed for the audit trail. Storing a reply never changes the decision — approval is server-side only. Once `classification.requestedHuman` is true the case is human-handled and the assistant stays silent.",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": {
+                  "body": { "type": "string", "minLength": 1, "maxLength": 4000 },
+                  "meta": {
+                    "type": "object",
+                    "properties": {
+                      "model": { "type": "string", "maxLength": 80 },
+                      "latencyMs": { "type": "number", "minimum": 0, "maximum": 120000 },
+                      "classification": { "$ref": "#/components/schemas/AiClassification" }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "body": "Your refund of $40.00 for the cracked mug is approved and goes back to your card.",
+                "meta": {
+                  "model": "gemini-2.5-flash-lite",
+                  "latencyMs": 4210,
+                  "classification": {
+                    "intent": "REFUND_REQUEST",
+                    "detectedReason": "DAMAGED",
+                    "isDispute": false,
+                    "urgency": "NORMAL"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reply stored with its audit metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" }
+        }
+      }
+    },
+    "/refunds/admin/requests": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Every refund request, for the review queue",
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/DecisionFilter" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first. Unread counts are per staff member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequestList" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/refunds/admin/requests/{requestId}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "One request from the staff perspective",
+        "description": "Includes `customerEmail`. The reviewer is treated as the viewer, so `unreadCount` reflects what they have not opened.",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "responses": {
+          "200": {
+            "description": "The request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/refunds/admin/requests/{requestId}/resolve": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Approve or deny an escalated request",
+        "description": "Only ESCALATED requests are resolvable. An already auto-approved or auto-denied request returns 404, so a reviewer cannot flip a settled outcome. The reviewer identity and note are recorded on the case.",
+        "parameters": [{ "$ref": "#/components/parameters/RequestId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["outcome", "note"],
+                "properties": {
+                  "outcome": { "type": "string", "enum": ["APPROVED", "DENIED"] },
+                  "note": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                }
+              },
+              "example": { "outcome": "APPROVED", "note": "Photo evidence confirmed the damage." }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved and recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/RefundRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": {
+            "$ref": "#/components/responses/NotFound",
+            "description": "Not found, or the request is not escalated and therefore not reviewable."
+          },
+          "422": { "$ref": "#/components/responses/ValidationFailed" }
+        }
+      }
+    }
+  }
+}
