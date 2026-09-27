@@ -13,8 +13,11 @@ classification and conversation only — it never overrides a policy decision.
 
 ```bash
 docker compose up -d
-docker exec refoond-backend npm run seed
+docker compose up
 ```
+
+That is the whole setup. Each Dockerfile runs `npm ci` itself, so there is **no `npm install`** to run on the
+host, and the backend seeds the database on every start. First boot takes a few minutes while the images build.
 
 | Service | URL |
 | --- | --- |
@@ -23,9 +26,12 @@ docker exec refoond-backend npm run seed
 | **API docs (Swagger)** | **http://localhost:5050/api-docs/** |
 | Mongo Express | http://localhost:8084 |
 
-The database starts empty on first run, so **the seed step is required** before there is anything to sign in
-to. Re-running it is safe and wipes the data first.
+**One manual step on a new machine:** create `frontend/.env` with your Gemini key (see
+[Gemini setup](#gemini-setup-required)). It is gitignored, so a fresh clone will not have it. Without it the app
+still runs and every policy decision still works — only the AI chat shows an error state.
 
+> Re-seeding later: `docker exec refoond-backend npm run seed` (destructive, wipes the data first).
+>
 > Full demo script, every seeded account and all 18 orders: **[DEMO.md](DEMO.md)**
 
 ### Sign in
@@ -54,7 +60,6 @@ VITE_GEMINI_MODEL=gemini-2.5-flash-lite
 Restart the frontend afterwards — Vite reads env vars only at startup. Without a key the chat shows an error
 state, but the policy engine and the whole admin side still work.
 
-> The backend never calls Gemini. Any `GEMINI_API_KEY` / `GEMINI_MODEL` in `backend/.env` is unused.
 
 ---
 
