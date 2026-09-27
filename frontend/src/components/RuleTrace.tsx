@@ -32,11 +32,7 @@ const OUTCOME_META: Record<
   },
 };
 
-/**
- * Renders the policy engine's ruleTrace as plain prose. The rule ids and
- * policy references are deliberately omitted: an agent needs to see why the
- * decision went the way it did, not the internal rule numbering.
- */
+
 export function RuleTrace({ entries, className }: { entries: RuleTraceEntry[]; className?: string }) {
   if (!entries.length) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">No policy evaluation was recorded.</p>;

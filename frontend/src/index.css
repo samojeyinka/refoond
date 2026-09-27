@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Workspace utilities are compiled by Tailwind's Vite plugin. */
+
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -97,3 +97,54 @@ button:not(:disabled),
 
 .typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-page main > section {
+    opacity: 0;
+    transform: translateY(2.5rem);
+    transition: opacity 700ms ease-out, transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .landing-page main > section.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .landing-page main > section:nth-child(2) {
+    transition-delay: 80ms;
+  }
+
+  @keyframes auth-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(1.25rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes auth-panel-in {
+    from {
+      opacity: 0;
+      transform: translateX(-1.5rem) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  .auth-enter {
+    animation: auth-rise-in 550ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .auth-panel-enter {
+    animation: auth-panel-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  }
+
+  .auth-enter-delay-1 { animation-delay: 100ms; }
+  .auth-enter-delay-2 { animation-delay: 180ms; }
+  .auth-enter-delay-3 { animation-delay: 260ms; }
+}

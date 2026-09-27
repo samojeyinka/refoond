@@ -25,9 +25,7 @@ import { chatSound } from '../lib/sound';
 import type { Order, RefundMessage, RefundMessageAuthor, RefundReason, RefundRequest } from '../api/types';
 
 interface ConversationalRefundDrawerProps {
-  /** If creating a new refund for an order */
   order: Order | null;
-  /** If inspecting an existing refund request */
   requestId: string | null;
   open: boolean;
   onClose: () => void;
@@ -37,7 +35,6 @@ interface ConversationalRefundDrawerProps {
 
 type WizardStep = 'GREETING' | 'SELECT_REASON' | 'CONDITIONAL_OPTION' | 'CUSTOM_DETAILS' | 'SUBMITTING' | 'THREAD';
 
-/** Who is answering: the assistant, or a person from customer service. */
 type HandlingMode = 'AUTO' | 'HUMAN';
 
 const AUTHOR_LABEL: Record<RefundMessageAuthor, string> = {
@@ -64,11 +61,7 @@ interface PendingAssistantMessage {
   meta: refundsApi.AssistantMessageMeta;
 }
 
-/**
- * A one-time divider, not a live banner: it is rendered at the point in the
- * thread where the handoff happened, so it stays where it belongs instead of
- * reappearing on every visit or being shoved down by later messages.
- */
+
 function HandoffNotice() {
   return (
     <div className="flex items-center gap-3 py-1" role="separator">
@@ -137,22 +130,16 @@ export function ConversationalRefundDrawer({
 const pendingAssistantRef = useRef<PendingAssistantMessage[]>([]);
 const greetedRef = useRef<string | null>(null);
 const catchUpRef = useRef<string | null>(null);
-/** Which thread the `messages` state currently belongs to. */
 const threadIdRef = useRef<string | null>(null);
-/** Bumped per load so a slow response cannot overwrite a newer thread. */
 const loadTokenRef = useRef(0);
-/**
- * Message keys already announced with a tone. The same message can reach the
- * thread both over the socket and through a concurrent fetch, and two pings for
- * one message is the kind of detail that makes a demo feel broken.
- */
+
 const pingedRef = useRef<Set<string>>(new Set());
 
 const pingOnce = useCallback((message: { author: string; body: string; createdAt: string }) => {
   const key = `${message.author}::${message.body}::${message.createdAt}`;
   if (pingedRef.current.has(key)) return false;
   pingedRef.current.add(key);
-  // Bounded so a long-lived session cannot grow this without limit.
+
   if (pingedRef.current.size > 200) {
     pingedRef.current = new Set(Array.from(pingedRef.current).slice(-100));
   }
@@ -218,30 +205,21 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
         if (event.aiReply) next.push(event.aiReply);
         return next;
       });
-      // The sender is excluded from the room broadcast, so anything arriving here
-      // came from someone else. The dedupe set guards the case where the same
-      // message is also delivered by a concurrent fetch.
+    
       if (event.message && pingOnce(event.message)) chatSound.receive();
       if (event.aiReply && pingOnce(event.aiReply)) chatSound.assistant();
       scrollToBottom();
     },
   });
 
-  /**
-   * Index of the message the handoff divider follows. A handoff always happens
-   * right after an assistant turn, and the assistant never speaks again, so the
-   * last AI message is the handoff point. -1 keeps the divider hidden, which is
-   * what we want for a thread where nobody ever asked for a person.
-   */
+
   const handoffMarkerIndex = detail?.aiMeta?.classification?.requestedHuman
     ? messages.reduce((last, message, index) => (message.author === 'AI' ? index : last), -1)
     : -1;
 
   const persistAssistantMessage = useCallback(
     async (message: RefundMessage, meta: refundsApi.AssistantMessageMeta, id: string) => {
-      // The socket is only used once it has actually joined this thread,
-      // otherwise the very first reply after creating a request falls back to
-      // HTTP and would otherwise be lost.
+   
       if (ready) {
         const ack = await sendAi(message.body, meta, `ai-${message.createdAt}`);
         if (ack.message) {
@@ -261,11 +239,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
     [ready, sendAi],
   );
 
-  /**
-   * Every customer-facing turn in this component comes through here. The model
-   * writes the text, it is rendered immediately, and only then is it stored.
-   * There is no local copy of any reply anywhere in this file.
-   */
+  
   const askAndShow = useCallback(
     async (options: {
       scenario: AssistantScenario;
@@ -275,17 +249,15 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
       requestOverride?: RefundRequest | null;
     }) => {
       const request = options.requestOverride !== undefined ? options.requestOverride : detailRef.current;
-      // Generation is async and the viewer can open a different thread while it
-      // runs. Remember where this reply belongs so it cannot land in the new one.
+
       const generationThread = threadIdRef.current;
-      /** Whether the viewer is still reading the thread this reply was written for. */
+
       let stillOnSameThread = true;
       let history: AssistantTurn[] = messagesRef.current.map((item) => ({
         author: item.author,
         body: item.body,
       }));
-      // The customer's own message is already on screen as an optimistic bubble,
-      // so drop the duplicate tail entry before handing history to the model.
+      
       if (options.userText) {
         const last = history[history.length - 1];
         if (last && last.author === 'CUSTOMER' && last.body === options.userText) {
@@ -329,16 +301,10 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
 
         stillOnSameThread = threadIdRef.current === generationThread;
 
-        // Asking for a person hands the conversation over on its own. The reply
-        // that detected it has already promised a few minutes, so flip the mode
-        // and keep the assistant quiet from here on.
         if (result.classification.requestedHuman && stillOnSameThread) {
           setHandlingMode('HUMAN');
         }
 
-        // Persist before the render guard: a reply generated just before a thread
-        // switch still belongs to the request it was written for, and dropping it
-        // would lose it from the server record too.
         if (request?.id) {
           try {
             await persistAssistantMessage(message, meta, request.id);
@@ -351,8 +317,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
           pendingAssistantRef.current.push({ message, meta });
         }
 
-        // The viewer is now looking at a different conversation, so this reply
-        // must not be pushed into the bubbles they are reading.
+  
         if (!stillOnSameThread) return;
 
         setMessages((current) => [...current, message]);
@@ -364,8 +329,6 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
           err instanceof Error ? err.message : 'The assistant could not answer right now.',
         );
       } finally {
-        // Clearing the typing bubble for a thread the viewer has left would
-        // hide the indicator for whichever generation is running there now.
         if (stillOnSameThread) setIsAiTyping(false);
         scrollToBottom();
       }
@@ -388,14 +351,12 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
       setDetailError(null);
       try {
         const data = await refundsApi.getRefundRequest(id);
-        // The viewer already moved on to another thread; this body is stale.
+
         if (token !== loadTokenRef.current) return;
         setDetail(data);
         const server = data.messages ?? [];
         setMessages((current) => {
-          // Switching threads replaces outright. Merging here would treat the
-          // previous thread's messages as "not yet on the server" and paste
-          // them into this one.
+        
           if (threadIdRef.current !== id) {
             threadIdRef.current = id;
             return server;
@@ -407,17 +368,11 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
         });
         setStep('THREAD');
 
-        // The handoff is persisted with the case, so a reload or a return visit
-        // must not quietly put the customer back with the assistant.
+  
         if (data.aiMeta?.classification?.requestedHuman) {
           setHandlingMode('HUMAN');
         }
 
-        // Threads that predate the assistant, including seeded demos, have no
-        // assistant turn. Write one now, live, then let it be persisted like any
-        // other reply so it only ever happens once per thread. The ref guard
-        // matters: the socket becoming ready rebuilds loadExisting, which would
-        // otherwise re-run this while the first turn is still generating.
         const hasAssistantTurn = (data.messages ?? []).some((item) => item.author === 'AI');
         if (
           !hasAssistantTurn &&
@@ -436,8 +391,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
     [userRole, assistantReady, askAndShow],
   );
 
-  // Held in a ref so the load runs on navigation only, not every time the
-  // socket or the assistant callbacks change identity.
+
   const loadExistingRef = useRef(loadExisting);
   loadExistingRef.current = loadExisting;
 
@@ -447,7 +401,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
     }
   }, [requestId, open]);
 
-  // The assistant opens every new refund conversation.
+ 
   useEffect(() => {
     if (!open || !order || requestId || detail) return;
     if (greetedRef.current === order.orderNumber) return;
@@ -466,7 +420,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
         try {
           await refundsApi.saveAssistantMessage(created.id, item.message.body, item.meta);
         } catch {
-          /* the reply is already on screen; losing the audit row is survivable */
+         
         }
       }
     },
@@ -475,8 +429,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
 
   async function submitRequest(finalReason: RefundReason, amountVal: number, userMessage: string) {
     if (!order) return;
-    // Remembered so a failed submit returns the customer to the step they were
-    // on instead of discarding a typed custom amount.
+ 
     const stepBefore = step;
     setSubmitting(true);
     setIsAiTyping(true);
@@ -573,12 +526,11 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
     );
   }
 
-  /** Free text always reaches the assistant, at every step of the wizard. */
+
   async function handleSendChatMessage() {
     const body = chatDraft.trim();
     if (!body || chatSending) return;
-    // Before a request exists there is no thread yet, but the customer must
-    // still be able to say something, so route it to the pre-request scenario.
+
     const hasThread = detail !== null;
     if (!hasThread && !order) return;
 
@@ -605,8 +557,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
     const threadId = activeId;
     if (!threadId) return;
 
-    // With a person on the case the assistant stands down, so never show the
-    // typing indicator for a reply that is not coming.
+
     const assistantOn = handlingMode === 'AUTO';
     setChatSending(true);
     if (assistantOn) setIsAiTyping(true);

@@ -3,10 +3,7 @@ import { useCallback, useState } from 'react';
 import { chatSound } from '../lib/sound';
 import { cn } from '../lib/cn';
 
-/**
- * Mute control for chat notification sounds. Lives in the chat header so the
- * sound is never something a user has to hunt for to turn off.
- */
+
 export function SoundToggle({ className }: { className?: string }) {
   const [muted, setMuted] = useState(() => chatSound.isMuted());
 

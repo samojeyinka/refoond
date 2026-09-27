@@ -10,11 +10,7 @@ const SOURCE_META: Record<RefundMessage['author'], { label: string; Icon: typeof
   SYSTEM: { label: 'System', Icon: MessageSquare },
 };
 
-/**
- * Who a preview line should be attributed to, from the reader's point of view.
- * "You" is only correct for the customer: an admin reading the same thread would
- * otherwise see the customer's own words labelled as their own.
- */
+
 function describe(
   message: RefundMessage,
   viewerRole: Role,
@@ -44,13 +40,7 @@ export function UnreadBadge({ count }: { count: number }) {
   );
 }
 
-/**
- * Newest-message preview with an unread count, so a list tells you what changed
- * and whether it still needs you.
- *
- * `showBadge` is off for rows that already render an <UnreadBadge> in their own
- * header; two badges side by side reads as a bug.
- */
+
 export function LatestMessageLine({
   request,
   viewerRole,
@@ -72,7 +62,7 @@ export function LatestMessageLine({
   return (
     <div
       className={cn(
-        'mt-3 flex items-start gap-2 rounded-xl border px-3 py-2',
+        'mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 w-[70%]',
         isUnread
           ? 'border-brand-200 bg-brand-50/70 dark:border-brand-900 dark:bg-brand-950/50'
           : 'border-zinc-200/80 bg-zinc-50/70 dark:border-zinc-800 dark:bg-zinc-900/40',

@@ -18,11 +18,7 @@ export interface IncomingRefundEvent {
   aiReply?: RefundMessage | null;
 }
 
-/**
- * Socket.IO connection used by both the customer thread and the staff console.
- * The server authenticates with the same httpOnly session cookie, so no token
- * has to be exposed to the browser.
- */
+
 export function useRefundSocket(options: {
   requestId: string | null;
   onMessage?: (event: IncomingRefundEvent) => void;
@@ -33,7 +29,7 @@ export function useRefundSocket(options: {
   const [joinedId, setJoinedId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
-  /** True only once the socket is connected *and* admitted to this thread. */
+
   const ready = connected && requestId !== null && joinedId === requestId;
 
   const messageHandler = useRef(onMessage);
@@ -103,7 +99,7 @@ export function useRefundSocket(options: {
     [requestId],
   );
 
-  /** Persists a reply the assistant generated in the browser. */
+
   const sendAi = useCallback(
     (body: string, meta: AssistantMessageMeta, clientId: string): Promise<Ack> => {
       const socket = socketRef.current;

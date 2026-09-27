@@ -18,7 +18,7 @@ const AUTHOR_LABEL: Record<RefundMessageAuthor, string> = {
   SYSTEM: 'System Notice',
 };
 
-/** Prefer the stored sender name; fall back to a role label for older rows. */
+
 function senderName(message: ChatMessage, own: boolean): string {
   if (own) return 'You';
   if (message.authorName) return message.authorName;
@@ -85,7 +85,7 @@ interface RefundChatProps {
   placeholder?: string;
   onSend: (body: string) => Promise<void>;
   emptyHint?: string;
-  /** Rendered inside the scroll area, above the messages. */
+
   context?: ReactNode;
 }
 

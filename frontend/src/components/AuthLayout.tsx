@@ -36,8 +36,8 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
   const dashboardPath = isAdmin ? '/admin' : '/orders';
 
   return (
-    <div className="min-h-dvh bg-[#f4f0e8] text-[#1d241f] dark:bg-[#111713] dark:text-[#f5f1e9]">
-      <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-5 sm:px-9 lg:px-14">
+    <div className="auth-page min-h-dvh bg-[#f4f0e8] text-[#1d241f] dark:bg-[#111713] dark:text-[#f5f1e9]">
+      <header className="auth-enter relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-5 sm:px-9 lg:px-14">
         <Link to="/" className="font-brand text-2xl font-black tracking-[-0.09em]">
           refoond<span className="text-[#e86438]">.</span>
         </Link>
@@ -62,7 +62,7 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
 
       <main className="grid min-h-[calc(100dvh-76px)] lg:grid-cols-[minmax(360px,0.9fr)_minmax(520px,1.1fr)]">
       <section
-        className="relative hidden overflow-hidden bg-[#1d241f] p-10 text-white lg:flex lg:flex-col lg:justify-between"
+        className="auth-panel-enter relative hidden overflow-hidden bg-[#1d241f] p-10 text-white lg:flex lg:flex-col lg:justify-between"
         aria-label="refoond introduction"
       >
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-25 mix-blend-screen" />
@@ -91,13 +91,13 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
 
       <section className="flex min-w-0 items-center justify-center px-5 py-12 sm:px-10">
         <div className="w-full max-w-md">
-          <header>
+          <header className="auth-enter auth-enter-delay-1">
             <p className="text-[11px] font-extrabold uppercase tracking-[.2em] text-[#e86438]">Welcome to refoond</p>
             <h1 className="font-brand mt-3 text-4xl font-black tracking-[-.055em] text-[#1d241f] dark:text-white">{title}</h1>
             <p className="mt-3 text-sm leading-6 text-[#657068] dark:text-[#c4c9c3]">{description}</p>
           </header>
-          <div className="mt-8">{children}</div>
-          {footer ? <div className="mt-7 text-center text-sm text-[#657068] dark:text-[#c4c9c3]">{footer}</div> : null}
+          <div className="auth-enter auth-enter-delay-2 mt-8">{children}</div>
+          {footer ? <div className="auth-enter auth-enter-delay-3 mt-7 text-center text-sm text-[#657068] dark:text-[#c4c9c3]">{footer}</div> : null}
         </div>
       </section>
       </main>

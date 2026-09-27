@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import AppShell from './components/AppShell';
 import { Spinner } from './components/ui/Spinner';
@@ -21,7 +22,7 @@ function FullPageSpinner() {
   );
 }
 
-/** Blocks a route until the session is known, then sends guests to /login. */
+
 function RequireAuth({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { me, loading, isAdmin } = useAuth();
   const location = useLocation();
@@ -32,7 +33,7 @@ function RequireAuth({ children, adminOnly = false }: { children: React.ReactNod
   return <>{children}</>;
 }
 
-/** Keeps the sign-in and sign-up screens away from people who already have a session. */
+
 function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
   const { me, loading, isAdmin } = useAuth();
   if (loading) return <FullPageSpinner />;
@@ -40,7 +41,7 @@ function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Sends each role to the surface it actually works in. */
+
 function RoleHome() {
   const { me, loading, isAdmin } = useAuth();
   if (loading) return <FullPageSpinner />;
@@ -95,6 +96,7 @@ export default function App() {
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            <ToastContainer position="top-right" autoClose={5000} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Headset, Inbox, Scale, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Headset, Inbox, MessageCircle, Scale, XCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -76,6 +77,8 @@ export default function AdminQueuePage() {
   const [filter, setFilter] = useState<RefundDecision | ''>('');
   const list = useAsyncData(() => refundsApi.listAllRequests(filter || undefined), [filter]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [drawerView, setDrawerView] = useState<'details' | 'conversation'>('details');
+  const [manuallyClosed, setManuallyClosed] = useState(false);
   const [detail, setDetail] = useState<RefundRequest | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [messages, setMessages] = useState<RefundMessage[]>([]);
@@ -144,6 +147,8 @@ export default function AdminQueuePage() {
 
   useEffect(() => {
     if (openId) {
+      setDrawerView('details');
+      setManuallyClosed(false);
       void load(openId);
       // Opening the case is what marks it read, otherwise the staff unread count
       // only ever grows and stops meaning anything.
@@ -225,6 +230,13 @@ export default function AdminQueuePage() {
   );
 
   const awaiting = detail?.status === 'AWAITING_REVIEW';
+  const showingConversation = drawerView === 'conversation';
+  const ticketClosed = detail?.status === 'RESOLVED' || manuallyClosed;
+
+  function closeDrawer() {
+    setDrawerView('details');
+    setOpenId(null);
+  }
 
   return (
     <>
@@ -277,16 +289,43 @@ export default function AdminQueuePage() {
 
       <Drawer
         open={Boolean(openId)}
-        onClose={() => setOpenId(null)}
-        title={detail ? detail.reference : 'Refund request'}
-        description={detail ? `${detail.orderNumber} · requested ${detail.requestedAmount}` : undefined}
+        onClose={closeDrawer}
+        title={showingConversation ? 'Customer conversation' : detail ? detail.reference : 'Refund request'}
+        description={
+          showingConversation
+            ? detail
+              ? `${detail.reference} · ${detail.customerEmail}`
+              : undefined
+            : detail
+              ? `${detail.orderNumber} · requested ${detail.requestedAmount}`
+              : undefined
+        }
         footer={
           detail ? (
             <div className="flex items-center justify-between gap-3">
-              <SoundToggle />
-              <Button variant="secondary" onClick={() => setOpenId(null)}>
-                Close
-              </Button>
+              {showingConversation ? (
+                <Button variant="secondary" onClick={() => setDrawerView('details')}>
+                  <ArrowLeft className="size-4" aria-hidden="true" />
+                  Back to review
+                </Button>
+              ) : (
+                <SoundToggle />
+              )}
+              {showingConversation ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setManuallyClosed(true);
+                    toast.success('Ticket closed.');
+                  }}
+                  disabled={ticketClosed}
+                >
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                  {ticketClosed ? 'Ticket closed' : 'Close ticket'}
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={closeDrawer}>Close</Button>
+              )}
             </div>
           ) : null
         }
@@ -296,6 +335,33 @@ export default function AdminQueuePage() {
           <ErrorState message={detailError} onRetry={() => openId && void load(openId)} />
         ) : !detail ? (
           <Skeleton className="h-64 rounded-lg" />
+        ) : showingConversation ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <SectionHeading title="Customer thread" description="Reply live without leaving the case context." />
+              <SoundToggle />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+              <RefundChat
+                messages={messages}
+                connected={connected}
+                canPost={!ticketClosed}
+                myAuthor="ADMIN"
+                placeholder="Reply to the customer…"
+                onSend={post}
+                context={
+                  detail.ruleTrace.length ? (
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3.5 dark:border-zinc-800 dark:bg-zinc-900/50">
+                      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        How this was decided
+                      </p>
+                      <RuleTrace entries={detail.ruleTrace} />
+                    </div>
+                  ) : null
+                }
+              />
+            </div>
+          </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-5">
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
@@ -305,7 +371,10 @@ export default function AdminQueuePage() {
               {detail.flags.map((flag) => (
                 <FlagBadge key={flag} flag={flag} />
               ))}
-             
+              <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setDrawerView('conversation')}>
+                <MessageCircle className="size-4" aria-hidden="true" />
+                Conversation
+              </Button>
             </div>
 
             <Card className="p-4">
@@ -382,30 +451,6 @@ export default function AdminQueuePage() {
                 </div>
               </div>
             ) : null}
-            </div>
-
-            <div className="flex shrink-0 flex-col">
-              <SectionHeading title="Customer thread" />
-              <div className="mt-3 h-[clamp(22rem,58dvh,44rem)] overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-                <RefundChat
-                  messages={messages}
-                  connected={connected}
-                  canPost
-                  myAuthor="ADMIN"
-                  placeholder="Reply to the customer…"
-                  onSend={post}
-                  context={
-                    detail.ruleTrace.length ? (
-                      <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3.5 dark:border-zinc-800 dark:bg-zinc-900/50">
-                        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                          How this was decided
-                        </p>
-                        <RuleTrace entries={detail.ruleTrace} />
-                      </div>
-                    ) : null
-                  }
-                />
-              </div>
             </div>
           </div>
         )}

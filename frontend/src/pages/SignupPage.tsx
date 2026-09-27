@@ -32,7 +32,7 @@ export default function SignupPage() {
   return (
     <AuthLayout
       title="Create your account"
-      description="New accounts start as customers. Support staff accounts are created by an administrator."
+      description="Get started in a minute. Track your orders, open a refund request, and follow every decision along the way."
       footer={
         <>
           Already registered?{' '}

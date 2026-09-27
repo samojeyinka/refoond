@@ -16,10 +16,7 @@ function request(overrides: Partial<RefundRequest> = {}): RefundRequest {
 }
 
 describe('LatestMessageLine attribution', () => {
-  /**
-   * Regression: attribution used to be hardcoded, so an admin reading a thread
-   * saw the customer's own words labelled "You".
-   */
+ 
   it('labels the customer as "You" for the customer', () => {
     render(<LatestMessageLine request={request()} viewerRole="CUSTOMER" />);
     expect(screen.getByText('You:')).toBeInTheDocument();
@@ -66,7 +63,7 @@ describe('LatestMessageLine attribution', () => {
 });
 
 describe('LatestMessageLine unread badge', () => {
-  /** Regression: rows rendered a badge in their header *and* inside the line. */
+  
   it('renders the badge by default', () => {
     render(<LatestMessageLine request={request({ unreadCount: 3 })} viewerRole="CUSTOMER" />);
     expect(screen.getByLabelText('3 unread messages')).toBeInTheDocument();
