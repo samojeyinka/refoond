@@ -36,7 +36,7 @@ export default function SignupPage() {
       footer={
         <>
           Already registered?{' '}
-          <Link to="/login" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
+          <Link to="/login" className="font-semibold text-[#e86438] hover:underline">
             Sign in
           </Link>
         </>
@@ -73,7 +73,7 @@ export default function SignupPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button type="submit" size="lg" className="w-full" loading={submitting} disabled={submitting}>
+        <Button type="submit" size="lg" className="w-full border-[#e86438] bg-[#e86438] hover:border-[#cc4d28] hover:bg-[#cc4d28]" loading={submitting} disabled={submitting}>
           Create account
         </Button>
       </form>

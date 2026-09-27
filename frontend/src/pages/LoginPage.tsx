@@ -38,7 +38,7 @@ export default function LoginPage() {
       footer={
         <>
           Need an account?{' '}
-          <Link to="/signup" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
+          <Link to="/signup" className="font-semibold text-[#e86438] hover:underline">
             Create one
           </Link>
         </>
@@ -64,11 +64,11 @@ export default function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button type="submit" size="lg" className="w-full" loading={submitting} disabled={submitting}>
+        <Button type="submit" size="lg" className="w-full border-[#e86438] bg-[#e86438] hover:border-[#cc4d28] hover:bg-[#cc4d28]" loading={submitting} disabled={submitting}>
           Sign in
         </Button>
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs leading-5 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-          <p className="font-semibold text-zinc-800 dark:text-zinc-200">Demo accounts (password: Password123!)</p>
+        <div className="rounded-2xl border border-[#1d241f]/10 bg-white/60 p-4 text-xs leading-5 text-[#657068] dark:border-white/10 dark:bg-white/5 dark:text-[#c4c9c3]">
+          <p className="font-semibold text-[#1d241f] dark:text-white">Demo accounts (password: Password123!)</p>
           <p className="mt-1 font-mono">admin@refoond.dev</p>
           <p className="font-mono">amara.okafor@example.com</p>
         </div>

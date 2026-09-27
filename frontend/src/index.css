@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Workspace utilities are compiled by Tailwind's Vite plugin. */
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {

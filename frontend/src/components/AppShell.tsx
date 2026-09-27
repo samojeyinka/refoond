@@ -24,16 +24,16 @@ export default function AppShell() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
+    <div className="flex min-h-dvh flex-col bg-[#f4f0e8] dark:bg-[#111713]">
+      <header className="sticky top-0 z-20 border-b border-[#1d241f]/10 bg-[#f4f0e8]/90 backdrop-blur-md dark:border-white/10 dark:bg-[#111713]/90">
+        <div className="mx-auto flex h-[72px] w-full max-w-7xl items-center gap-3 px-4 sm:px-6">
           <NavLink to="/" className="flex items-center">
-            <span className="font-brand text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
-              refoond
+            <span className="font-brand text-2xl font-black tracking-[-0.09em] text-[#1d241f] dark:text-white">
+              refoond<span className="text-[#e86438]">.</span>
             </span>
           </NavLink>
 
-          <nav className="ml-4 flex items-center gap-1.5" aria-label="Main">
+          <nav className="ml-2 flex items-center rounded-full border border-[#1d241f]/10 bg-white/55 p-1 dark:border-white/10 dark:bg-white/5 sm:ml-5" aria-label="Main">
             {links.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -41,10 +41,10 @@ export default function AppShell() {
                 end
                 className={({ isActive }) =>
                   cn(
-                    'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-all',
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition-all sm:px-4 sm:text-sm',
                     isActive
-                      ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                      : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100',
+                      ? 'bg-[#1d241f] text-white shadow-sm dark:bg-[#f4f0e8] dark:text-[#1d241f]'
+                      : 'text-[#657068] hover:bg-white hover:text-[#1d241f] dark:text-[#c4c9c3] dark:hover:bg-white/10 dark:hover:text-white',
                   )
                 }
               >
@@ -56,19 +56,19 @@ export default function AppShell() {
 
 
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle colour theme">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle colour theme" className="rounded-full border border-[#1d241f]/10 dark:border-white/10">
               {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <div className="hidden items-center gap-2.5 sm:flex">
+            <div className="hidden items-center gap-2.5 border-l border-[#1d241f]/10 pl-3 sm:flex dark:border-white/10">
               <Avatar name={me?.fullName ?? 'User'} size="sm" />
               <div className="leading-tight">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{me?.fullName}</p>
-                <p className="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <p className="text-sm font-semibold text-[#1d241f] dark:text-white">{me?.fullName}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#657068] dark:text-[#c4c9c3]">
                   {isAdmin ? 'Support staff' : 'Customer'}
                 </p>
               </div>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+            <Button variant="ghost" size="sm" onClick={() => void signOut()} className="rounded-full">
               <LogOut className="size-3.5" aria-hidden="true" />
               Sign out
             </Button>
@@ -80,8 +80,8 @@ export default function AppShell() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-zinc-200/80 py-4 dark:border-zinc-800/80">
-        <p className="mx-auto w-full max-w-7xl px-4 text-xs font-medium text-zinc-500 sm:px-6 dark:text-zinc-400">
+      <footer className="border-t border-[#1d241f]/10 py-4 dark:border-white/10">
+        <p className="mx-auto w-full max-w-7xl px-4 text-xs font-medium text-[#657068] sm:px-6 dark:text-[#c4c9c3]">
           refoond · customer support refund system.
         </p>
       </footer>

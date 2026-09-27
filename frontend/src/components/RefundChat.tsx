@@ -162,7 +162,7 @@ export function RefundChat({
             </p>
           ) : null}
           {error ? <p className="mb-2 text-[11px] text-red-600 dark:text-red-400">{error}</p> : null}
-          <div className="flex items-end gap-2">
+          <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50/70 p-1.5 transition focus-within:border-zinc-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900/60 dark:focus-within:border-zinc-600 dark:focus-within:bg-zinc-900">
             <Textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -175,16 +175,16 @@ export function RefundChat({
                   void submit();
                 }
               }}
-              className="resize-none text-sm"
+              className="min-h-[76px] resize-none border-0 bg-transparent py-2.5 pr-12 shadow-none focus:border-0 focus:ring-0 dark:bg-transparent"
             />
             <button
               type="button"
               onClick={() => void submit()}
               disabled={!connected || sending || !draft.trim()}
               aria-label="Send reply"
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white transition-opacity disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-950"
+              className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-xl bg-zinc-950 text-white transition hover:bg-[#e86438] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-[#e86438] dark:hover:text-white"
             >
-              <Send className="size-4" />
+              <Send className="size-4" aria-hidden="true" />
             </button>
           </div>
         </div>

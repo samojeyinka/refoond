@@ -1,17 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  Bot,
-  ChevronRight,
-  FileSearch,
-  MessageSquare,
-  Moon,
-  Scale,
-  ShieldCheck,
-  Sun,
-  Timer,
-} from 'lucide-react';
+import { ArrowDownRight, ArrowRight, Bot, ChevronRight, FileSearch, MessageSquare, Moon, Scale, ShieldCheck, Sun, Timer } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,44 +8,13 @@ import { useAsyncData } from '../hooks/useAsyncData';
 import * as refundsApi from '../api/refunds';
 
 const CATEGORIES = ['All', 'Auto Approval', 'Human Handoff', 'Audit Trail'];
-
 const HIGHLIGHTS = [
-  {
-    tag: 'CONSISTENT',
-    icon: Scale,
-    title: 'The same answer every time',
-    body: 'A fixed set of rules decides every refund. Gemini writes the explanation, but it never changes the outcome.',
-  },
-  {
-    tag: 'AUDITABLE',
-    icon: FileSearch,
-    title: 'Every decision is auditable',
-    body: 'Each request stores the full reasoning, the rules version, and the AI metadata so reviewers see exact justification.',
-  },
-  {
-    tag: 'AI ASSISTED',
-    icon: Bot,
-    title: 'Replies that follow the rules',
-    body: 'The assistant drafts customer explanations based strictly on rule outcomes while treating input text as untrusted data.',
-  },
-  {
-    tag: 'SECURITY',
-    icon: ShieldCheck,
-    title: 'Prompt-injection aware',
-    body: 'Policy-bypass attempts are flagged server-side and automatically routed to human staff for manual review.',
-  },
-  {
-    tag: 'AUTOMATION',
-    icon: Timer,
-    title: 'Instant for eligible cases',
-    body: 'Routine refunds below the review threshold settle in seconds. High-value or flagged requests escalate automatically.',
-  },
-  {
-    tag: 'HANDOFF',
-    icon: MessageSquare,
-    title: 'Live human collaboration',
-    body: 'Every request includes a real-time messaging thread where support staff review the same reasoning the customer saw.',
-  },
+  { tag: 'CONSISTENT', icon: Scale, title: 'One policy. Every time.', body: 'A fixed set of rules decides every refund, whatever channel it arrives through.', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=900&q=80' },
+  { tag: 'AUDITABLE', icon: FileSearch, title: 'Nothing disappears.', body: 'The reasoning, policy version and AI metadata stay attached to each decision.', image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80' },
+  { tag: 'AI ASSISTED', icon: Bot, title: 'Clear words, careful rules.', body: 'AI turns outcomes into a reply your customers can actually understand.', image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80' },
+  { tag: 'SECURITY', icon: ShieldCheck, title: 'Built to hold the line.', body: 'Suspicious requests are flagged and passed to a real person before anything happens.', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=900&q=80' },
+  { tag: 'AUTOMATION', icon: Timer, title: 'The easy ones move fast.', body: 'Eligible cases can settle in seconds, keeping your team focused on the exceptions.', image: 'https://images.unsplash.com/photo-1494412651409-8963ce7935a7?auto=format&fit=crop&w=900&q=80' },
+  { tag: 'HANDOFF', icon: MessageSquare, title: 'Humans stay in the loop.', body: 'When a refund needs judgment, your team sees the same context as the customer.', image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80' },
 ];
 
 export default function LandingPage() {
@@ -64,199 +22,21 @@ export default function LandingPage() {
   const { me, isAdmin } = useAuth();
   const policy = useAsyncData(() => refundsApi.getPolicy(), []);
   const [activeCategory, setActiveCategory] = useState('All');
-
-  // Signed-in visitors keep the landing page, so the primary action becomes a
-  // link into the surface they actually work in.
   const dashboardPath = isAdmin ? '/admin' : '/orders';
+  const filtered = HIGHLIGHTS.filter((item) => activeCategory === 'All' || (activeCategory === 'Auto Approval' && item.tag === 'AUTOMATION') || (activeCategory === 'Human Handoff' && item.tag === 'HANDOFF') || (activeCategory === 'Audit Trail' && item.tag === 'AUDITABLE'));
 
-  const filteredHighlights = HIGHLIGHTS.filter((item) => {
-    return (
-      activeCategory === 'All' ||
-      (activeCategory === 'Auto Approval' && item.tag === 'AUTOMATION') ||
-      (activeCategory === 'Human Handoff' && item.tag === 'HANDOFF') ||
-      (activeCategory === 'Audit Trail' && item.tag === 'AUDITABLE')
-    );
-  });
-
-
-  return (
-    <div className="min-h-dvh bg-[#fcfcfd] text-zinc-950 dark:bg-[#09090b] dark:text-zinc-50">
-      {/* Header Navigation */}
-      <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-[#fcfcfd]/90 backdrop-blur-md dark:border-zinc-800/80 dark:bg-[#09090b]/90">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center">
-            <span className="font-brand text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
-              refoond
-            </span>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </Button>
-            {me ? (
-              <Link to={dashboardPath}>
-                <Button size="sm">Dashboard</Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="hidden sm:inline-flex">
-                  <Button variant="secondary" size="sm">
-                    Sign in
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button size="sm">Get started</Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main>
-        {/* Hero Section */}
-        <section className="mx-auto w-full max-w-5xl px-4 pt-16 pb-12 text-center sm:px-6 sm:pt-24 sm:pb-16">
-          <h1 className="font-brand mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-zinc-950 sm:text-6xl dark:text-zinc-50">
-            Build AI Refund Systems <br className="hidden sm:inline" />
-            For Your Business
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
-            Automate customer support refund decisions with a fixed set of refund rules.
-            AI classifies and explains outcomes without changing the outcome.
-          </p>
-
-          {/* Stats Bar */}
-          {policy.data ? (
-            <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-              {[
-                { label: 'Return Window', value: `${policy.data.returnWindowDays} Days` },
-                { label: 'Auto-Approved Limit', value: policy.data.humanReviewThreshold },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl border border-zinc-200/80 bg-white p-5 text-left shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/60"
-                >
-                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                    {stat.label}
-                  </p>
-                  <p className="font-brand mt-1 text-2xl font-extrabold text-zinc-950 dark:text-zinc-50">
-                    {stat.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-
-        {/* Filter Pills Navigation */}
-        <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-            {CATEGORIES.map((category) => {
-              const active = activeCategory === category;
-              return (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`shrink-0 rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-                    active
-                      ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                      : 'border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-                  }`}
-                >
-                  {category}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Feature Cards Grid */}
-        <section id="features-grid" className="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredHighlights.map(({ tag, icon: Icon, title, body }) => (
-              <div
-                key={title}
-                className="group flex flex-col justify-between rounded-3xl border border-zinc-200/80 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800/80 dark:bg-zinc-900/60"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex size-10 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
-                      <Icon className="size-5" />
-                    </div>
-                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                      {tag}
-                    </span>
-                  </div>
-
-                  <h3 className="font-brand mt-5 text-xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{body}</p>
-                </div>
-
-                <div className="mt-6 pt-4">
-                  <Link
-                    to="/signup"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-950 hover:underline dark:text-zinc-100"
-                  >
-                    Learn more <ChevronRight className="size-3.5" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA Banner */}
-          <div className="mt-16 rounded-3xl border border-zinc-900 bg-zinc-950 p-8 text-white sm:p-12 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-              <div>
-                <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl text-white">
-                  Ready to test refoond?
-                </h2>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Log in with pre-seeded demo accounts or create a new customer account instantly.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {me ? (
-                  <Link to={dashboardPath}>
-                    <Button size="lg" className="border-white bg-white text-zinc-950 hover:bg-zinc-200">
-                      Go to dashboard <ArrowRight className="size-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    <Link to="/signup">
-                      <Button size="lg" className="border-white bg-white text-zinc-950 hover:bg-zinc-200">
-                        Start a request <ArrowRight className="size-4" />
-                      </Button>
-                    </Link>
-                    <Link to="/login">
-                      <Button size="lg" variant="secondary" className="border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700">
-                        Sign in to demo
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-zinc-200/80 py-8 dark:border-zinc-800/80">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
-          <Link to="/" className="font-brand text-lg font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-            refoond
-          </Link>
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            refoond · human-centered refund management.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
+  return <div className="min-h-dvh overflow-hidden bg-[#f4f0e8] text-[#1d241f] selection:bg-[#e86438] selection:text-white dark:bg-[#111713] dark:text-[#f5f1e9]">
+    <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-5 sm:px-9 lg:px-14">
+      <Link to="/" className="font-brand text-2xl font-black tracking-[-0.09em]">refoond<span className="text-[#e86438]">.</span></Link>
+      <div className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.16em] md:flex"><a href="#how-it-works" className="transition hover:text-[#e86438]">How it works</a><a href="#why-refoond" className="transition hover:text-[#e86438]">Why refoond</a></div>
+      <div className="flex items-center gap-2 sm:gap-3"><Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme" className="rounded-full border border-[#1d241f]/15 dark:border-white/15">{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}</Button>{me ? <Link to={dashboardPath}><Button size="sm" className="rounded-full bg-[#1d241f] px-5 text-white hover:bg-[#e86438] dark:bg-[#f5f1e9] dark:text-[#1d241f]">Dashboard</Button></Link> : <><Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm" className="rounded-full">Sign in</Button></Link><Link to="/signup"><Button size="sm" className="rounded-full bg-[#1d241f] px-5 text-white hover:bg-[#e86438] dark:bg-[#f5f1e9] dark:text-[#1d241f]">Get started</Button></Link></>}</div>
+    </header>
+    <main>
+      <section className="relative mx-auto max-w-[1440px] px-5 pb-16 pt-8 sm:px-9 lg:px-14 lg:pb-24 lg:pt-16"><div className="grid items-end gap-9 lg:grid-cols-[1.05fr_.95fr]"><div className="relative z-10"><p className="mb-6 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#e86438]"><span className="size-2 rounded-full bg-[#e86438]" /> The calmer way to handle returns</p><h1 className="font-brand max-w-3xl text-[clamp(3.4rem,7.1vw,7.6rem)] font-black leading-[.87] tracking-[-.075em]">Refunds,<br />without the<br /><span className="text-[#e86438]">runaround.</span></h1><div className="mt-9 flex max-w-xl flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><p className="max-w-sm text-base leading-relaxed text-[#566058] dark:text-[#c4c9c3]">A thoughtful control room for refunds: quick enough for customers, clear enough for your team.</p><Link to={me ? dashboardPath : '/signup'} className="group inline-flex shrink-0 items-center gap-3 text-sm font-black"><span className="flex size-12 items-center justify-center rounded-full bg-[#e86438] text-white transition group-hover:rotate-45"><ArrowDownRight className="size-5" /></span>{me ? 'Open dashboard' : 'Start a request'}</Link></div></div><div className="relative min-h-[390px] overflow-hidden rounded-[2rem] bg-[#d95f37] sm:min-h-[510px] lg:rounded-[2.8rem]"><img src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=85" alt="Customer receiving a package" className="absolute inset-0 size-full object-cover mix-blend-multiply opacity-90" /><div className="absolute inset-0 bg-gradient-to-t from-[#392016]/75 via-transparent to-transparent" /><div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-[#f7f2e8]/95 p-4 text-[#1d241f] shadow-xl backdrop-blur sm:bottom-7 sm:left-7 sm:right-auto sm:w-[290px] sm:p-5"><div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.14em]"><span>Refund request</span><span className="rounded-full bg-[#c9e3c5] px-2 py-1 text-[#27603d]">Approved</span></div><p className="font-brand mt-3 text-2xl font-black tracking-[-.04em]">Order #RF-2024</p><p className="mt-1 text-xs text-[#637066]">Decision recorded · 02:14 PM</p></div><p className="absolute right-5 top-5 max-w-[140px] text-right text-[10px] font-bold uppercase leading-[1.6] tracking-[0.15em] text-white/80">Designed for the moments after a customer changes their mind</p></div></div><div className="mt-10 grid border-y border-[#1d241f]/15 py-5 dark:border-white/15 sm:grid-cols-3"><p className="pr-5 text-sm leading-snug text-[#566058] dark:text-[#c4c9c3]"><span className="font-black text-[#1d241f] dark:text-white">Built around trust.</span> A better decision is one everyone can understand.</p>{policy.data && <><div className="mt-5 border-t border-[#1d241f]/15 pt-5 sm:mt-0 sm:border-l sm:border-t-0 sm:px-7 sm:pt-0 dark:border-white/15"><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86438]">Return window</p><p className="font-brand mt-1 text-2xl font-black tracking-[-.04em]">{policy.data.returnWindowDays} days</p></div><div className="mt-5 border-t border-[#1d241f]/15 pt-5 sm:mt-0 sm:border-l sm:border-t-0 sm:px-7 sm:pt-0 dark:border-white/15"><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86438]">Instant decisions up to</p><p className="font-brand mt-1 text-2xl font-black tracking-[-.04em]">{policy.data.humanReviewThreshold}</p></div></>}</div></section>
+      <section id="why-refoond" className="bg-[#1d241f] px-5 py-16 text-[#f4f0e8] sm:px-9 sm:py-24 lg:px-14"><div className="mx-auto max-w-[1310px]"><div className="flex flex-col justify-between gap-7 border-b border-white/15 pb-10 md:flex-row md:items-end"><div><p className="text-[11px] font-extrabold uppercase tracking-[.22em] text-[#efa484]">Not another black box</p><h2 className="font-brand mt-4 max-w-xl text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl">Make every<br />answer <i className="font-serif font-normal">feel</i> fair.</h2></div><p className="max-w-xs text-sm leading-relaxed text-[#bbc1b8]">Switch between the ideas that matter to your operation. The actual rules stay in charge.</p></div><div className="mt-8 flex gap-2 overflow-x-auto pb-2">{CATEGORIES.map((category) => <button key={category} onClick={() => setActiveCategory(category)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${activeCategory === category ? 'border-[#e86438] bg-[#e86438] text-white' : 'border-white/20 text-white/70 hover:border-white hover:text-white'}`}>{category}</button>)}</div><div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{filtered.map(({ tag, icon: Icon, title, body, image }, index) => <article key={title} className={`group overflow-hidden rounded-[1.7rem] bg-[#2a342d] ${index === 0 && filtered.length > 1 ? 'md:col-span-2 lg:col-span-2' : ''}`}><div className="relative h-48 overflow-hidden"><img src={image} alt="" className="size-full object-cover opacity-80 transition duration-700 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#1d241f]/80 to-transparent" /><span className="absolute bottom-4 left-5 flex size-9 items-center justify-center rounded-full bg-[#f4f0e8] text-[#1d241f]"><Icon className="size-4" /></span></div><div className="p-5 sm:p-6"><p className="text-[10px] font-extrabold tracking-[.16em] text-[#efa484]">{tag}</p><h3 className="font-brand mt-3 text-2xl font-black tracking-[-.04em]">{title}</h3><p className="mt-2 max-w-md text-sm leading-relaxed text-[#bbc1b8]">{body}</p><Link to="/signup" className="mt-5 inline-flex items-center gap-1 text-xs font-extrabold text-[#efa484] hover:text-white">See it in action <ChevronRight className="size-3.5" /></Link></div></article>)}</div></div></section>
+      <section id="how-it-works" className="mx-auto grid max-w-[1440px] gap-10 px-5 py-16 sm:px-9 sm:py-24 lg:grid-cols-[.8fr_1.2fr] lg:px-14"><div><p className="text-[11px] font-extrabold uppercase tracking-[.22em] text-[#e86438]">A measured process</p><h2 className="font-brand mt-4 text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-6xl">Simple for them.<br />Certain for you.</h2><Link to={me ? dashboardPath : '/signup'} className="mt-8 inline-flex items-center gap-2 text-sm font-black underline decoration-[#e86438] decoration-2 underline-offset-8">{me ? 'Go to dashboard' : 'Create your account'} <ArrowRight className="size-4" /></Link></div><div className="grid gap-4 sm:grid-cols-3">{[['01', 'Customer asks', 'A request starts with the details that matter.'], ['02', 'Rules decide', 'Your policy evaluates the case, consistently.'], ['03', 'People stay close', 'The result is explained, stored and ready to review.']].map(([number, title, body]) => <div key={number} className="rounded-[1.5rem] border border-[#1d241f]/15 p-5 dark:border-white/15"><p className="font-brand text-4xl font-black tracking-[-.08em] text-[#e86438]">{number}</p><h3 className="mt-12 text-sm font-black uppercase tracking-[.09em]">{title}</h3><p className="mt-3 text-sm leading-relaxed text-[#657068] dark:text-[#c4c9c3]">{body}</p></div>)}</div></section>
+      <section className="mx-5 mb-5 overflow-hidden rounded-[2rem] bg-[#e86438] sm:mx-9 lg:mx-14 lg:rounded-[2.8rem]"><div className="relative mx-auto flex max-w-[1310px] flex-col items-start justify-between gap-8 px-7 py-12 sm:px-12 sm:py-16 md:flex-row md:items-end"><div className="relative z-10"><p className="text-[11px] font-extrabold uppercase tracking-[.22em] text-[#ffdfcc]">Your refund experience, upgraded</p><h2 className="font-brand mt-4 max-w-xl text-5xl font-black leading-[.88] tracking-[-.065em] text-white sm:text-7xl">The good kind<br />of <i className="font-serif font-normal">return.</i></h2></div><div className="relative z-10 flex flex-wrap gap-3">{me ? <Link to={dashboardPath}><Button size="lg" className="rounded-full border-white bg-white text-[#1d241f] hover:bg-[#f4f0e8]">Open dashboard <ArrowRight className="size-4" /></Button></Link> : <><Link to="/signup"><Button size="lg" className="rounded-full border-white bg-white text-[#1d241f] hover:bg-[#f4f0e8]">Get started <ArrowRight className="size-4" /></Button></Link><Link to="/login"><Button variant="secondary" size="lg" className="rounded-full border-white/50 bg-transparent text-white hover:bg-white/15">Sign in</Button></Link></>}</div><div className="absolute -bottom-20 -right-8 size-72 rounded-full border-[35px] border-[#f6a386] opacity-80" /></div></section>
+    </main>
+    <footer className="mx-auto flex max-w-[1440px] flex-col gap-3 px-5 py-8 text-xs text-[#657068] sm:flex-row sm:items-center sm:justify-between sm:px-9 lg:px-14 dark:text-[#c4c9c3]"><Link to="/" className="font-brand text-xl font-black tracking-[-.09em] text-[#1d241f] dark:text-white">refoond<span className="text-[#e86438]">.</span></Link><p>Clear decisions for every return.</p><p>© 2026 refoond</p></footer>
+  </div>;
 }

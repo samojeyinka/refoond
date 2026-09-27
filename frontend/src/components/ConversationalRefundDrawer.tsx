@@ -50,11 +50,11 @@ const AUTHOR_LABEL: Record<RefundMessageAuthor, string> = {
 const messageKey = (message: RefundMessage) => `${message.author}::${message.body}::${message.createdAt}`;
 
 const REASON_CHIPS: { value: RefundReason; label: string }[] = [
-  { value: 'DAMAGED', label: '📦 Arrived damaged' },
-  { value: 'WRONG_ITEM', label: '❌ Wrong item sent' },
-  { value: 'NOT_AS_DESCRIBED', label: '⚠️ Not as described' },
-  { value: 'NOT_DELIVERED', label: '🚚 Never arrived' },
-  { value: 'CHANGED_MIND', label: '🔄 Changed mind' },
+  { value: 'DAMAGED', label: 'Arrived damaged' },
+  { value: 'WRONG_ITEM', label: 'Wrong item sent' },
+  { value: 'NOT_AS_DESCRIBED', label: 'Not as described' },
+  { value: 'NOT_DELIVERED', label: 'Never arrived' },
+  { value: 'CHANGED_MIND', label: 'Changed mind' },
 ];
 
 const REASON_WITH_OPTIONS: RefundReason[] = ['DAMAGED', 'CHANGED_MIND'];
@@ -767,7 +767,7 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
             <div ref={endRef} />
           </div>
 
-          <div className="shrink-0 border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 space-y-3">
+          <div className="shrink-0 space-y-3 border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <FormErrorBanner message={submitError} />
 
             {showReasonChips ? (
@@ -874,31 +874,30 @@ const pingOnce = useCallback((message: { author: string; body: string; createdAt
                 ) : null}
                 {chatError ? <p className="text-[11px] text-red-600 dark:text-red-400">{chatError}</p> : null}
 
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <Textarea
-                      value={chatDraft}
-                      onChange={(e) => setChatDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          void handleSendChatMessage();
-                        }
-                      }}
-                      placeholder="Type a message or reply..."
-                      rows={2}
-                      disabled={closed || isAiTyping || chatSending}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
+                <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50/70 p-1.5 transition focus-within:border-zinc-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900/60 dark:focus-within:border-zinc-600 dark:focus-within:bg-zinc-900">
+                  <Textarea
+                    value={chatDraft}
+                    onChange={(e) => setChatDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSendChatMessage();
+                      }
+                    }}
+                    placeholder="Write a message…"
+                    rows={2}
+                    disabled={closed || isAiTyping || chatSending}
+                    className="min-h-[76px] resize-none border-0 bg-transparent py-2.5 pr-12 shadow-none focus:border-0 focus:ring-0 dark:bg-transparent"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Send message"
                     disabled={!chatDraft.trim() || chatSending || isAiTyping || closed}
                     onClick={() => void handleSendChatMessage()}
-                    className="h-10 px-4"
+                    className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-xl bg-zinc-950 text-white transition hover:bg-[#e86438] disabled:cursor-not-allowed disabled:opacity-35 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-[#e86438] dark:hover:text-white"
                   >
-                    <Send className="size-4" />
-                  </Button>
+                    <Send className="size-4" aria-hidden="true" />
+                  </button>
                 </div>
 
                 {detail && userRole === 'CUSTOMER' ? (
