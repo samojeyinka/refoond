@@ -1,19 +1,12 @@
 import type { Order, RefundReason, RefundRequest } from './types';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-/**
- * Cheapest model in the Gemini family that still holds the policy discipline
- * this prompt depends on. Override with VITE_GEMINI_MODEL without touching code.
- */
+
 const MODEL = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-2.5-flash-lite';
 const REQUEST_TIMEOUT_MS = 45_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [700, 2_000];
-/**
- * Reasoning tokens are billed against maxOutputTokens, so this ceiling has to
- * leave room for both the thinking and a full length reply. A response that
- * gets truncated mid-object is caught and retried as `empty` below.
- */
+
 const MAX_OUTPUT_TOKENS = 8_192;
 const API_HOST = 'https://generativelanguage.googleapis.com/v1beta';
 

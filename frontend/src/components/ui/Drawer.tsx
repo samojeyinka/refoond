@@ -27,6 +27,18 @@ export function Drawer({ open, onClose, title, description, children, footer, cl
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Kept in a ref so the focus management below runs on open/close only. An
+   * inline `onClose` arrow is a new identity on every parent render, and
+   * depending on it here re-ran the effect mid-keystroke — the cleanup pulled
+   * focus back to the trigger and the re-run yanked it to the panel, so a
+   * textarea held one character and then lost focus.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -36,7 +48,7 @@ export function Drawer({ open, onClose, title, description, children, footer, cl
 
     const handleKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
@@ -61,7 +73,7 @@ export function Drawer({ open, onClose, title, description, children, footer, cl
       document.body.style.overflow = overflow;
       previous?.focus();
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 

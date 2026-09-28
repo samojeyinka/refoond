@@ -233,10 +233,10 @@ export default function AdminQueuePage() {
   const showingConversation = drawerView === 'conversation';
   const ticketClosed = detail?.status === 'RESOLVED' || manuallyClosed;
 
-  function closeDrawer() {
+  const closeDrawer = useCallback(() => {
     setDrawerView('details');
     setOpenId(null);
-  }
+  }, []);
 
   return (
     <>
